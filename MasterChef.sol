@@ -6,7 +6,7 @@ import "./SafeMath.sol";
 import "./IBEP20.sol";
 import "./SafeBEP20.sol";
 import "./Ownable.sol";
-import "./DveToken.sol";
+import "./DoveToken.sol";
 
 // MasterChef is the master of Dove. He can make Dove and he is a fair guy.
 //
@@ -41,16 +41,16 @@ contract MasterChef is Ownable {
         IBEP20 lpToken;           // Address of LP token contract.
         uint256 allocPoint;       // How many allocation points assigned to this pool. DOVEs to distribute per block.
         uint256 lastRewardBlock;  // Last block number that DOVEs distribution occurs.
-        uint256 accDvePerShare;   // Accumulated DOVEs per share, times 1e12. See below.
+        uint256 accDovePerShare;   // Accumulated DOVEs per share, times 1e12. See below.
         uint16 depositFeeBP;      // Deposit fee in basis points
     }
 
     // The DOVE TOKEN!
-    DveToken public dve;
+    DoveToken public dove;
     // Dev address.
     address public devaddr;
     // DOVE tokens created per block.
-    uint256 public dvePerBlock;
+    uint256 public dovePerBlock;
     // Bonus muliplier for early owl makers.
     uint256 public constant BONUS_MULTIPLIER = 1;
     // Deposit Fee address
@@ -70,16 +70,16 @@ contract MasterChef is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
     constructor(
-        DveToken _dve,
+        DoveToken _dove,
         address _devaddr,
         address _feeAddress,
-        uint256 _dvePerBlock,
+        uint256 _dovePerBlock,
         uint256 _startBlock
     ) public {
-        dve = _dve;
+        dove = _dove;
         devaddr = _devaddr;
         feeAddress = _feeAddress;
-        dvePerBlock = _dvePerBlock;
+        dovePerBlock = _dovePerBlock;
         startBlock = _startBlock;
     }
 
@@ -100,7 +100,7 @@ contract MasterChef is Ownable {
             lpToken: _lpToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            accDvePerShare: 0,
+            accDovePerShare: 0,
             depositFeeBP: _depositFeeBP
         }));
     }
@@ -122,17 +122,17 @@ contract MasterChef is Ownable {
     }
 
     // View function to see pending DOVEs on frontend.
-    function pendingDve(uint256 _pid, address _user) external view returns (uint256) {
+    function pendingDove(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accDvePerShare = pool.accDvePerShare;
+        uint256 accDovePerShare = pool.accDovePerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 dveReward = multiplier.mul(dvePerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accDvePerShare = accDvePerShare.add(dveReward.mul(1e12).div(lpSupply));
+            uint256 doveReward = multiplier.mul(dovePerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+            accDovePerShare = accDovePerShare.add(doveReward.mul(1e12).div(lpSupply));
         }
-        return user.amount.mul(accDvePerShare).div(1e12).sub(user.rewardDebt);
+        return user.amount.mul(accDovePerShare).div(1e12).sub(user.rewardDebt);
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -155,10 +155,10 @@ contract MasterChef is Ownable {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 dveReward = multiplier.mul(dvePerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        dve.mint(devaddr, devReward.div(10));
-        dve.mint(address(this), dveReward);
-        pool.accDvePerShare = pool.accDvePerShare.add(dveReward.mul(1e12).div(lpSupply));
+        uint256 doveReward = multiplier.mul(dovePerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        dove.mint(devaddr, doveReward.div(10));
+        dove.mint(address(this), doveReward);
+        pool.accDovePerShare = pool.accDovePerShare.add(doveReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
     }
 
@@ -168,9 +168,9 @@ contract MasterChef is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
         if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accDvePerShare).div(1e12).sub(user.rewardDebt);
+            uint256 pending = user.amount.mul(pool.accDovePerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
-                safeDveTransfer(msg.sender, pending);
+                safeDoveTransfer(msg.sender, pending);
             }
         }
         if(_amount > 0) {
@@ -183,7 +183,7 @@ contract MasterChef is Ownable {
                 user.amount = user.amount.add(_amount);
             }
         }
-        user.rewardDebt = user.amount.mul(pool.accDvePerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accDovePerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -193,15 +193,15 @@ contract MasterChef is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accDvePerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accDovePerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
-            safeDveTransfer(msg.sender, pending);
+            safeDoveTransfer(msg.sender, pending);
         }
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accDvePerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accDovePerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
@@ -217,12 +217,12 @@ contract MasterChef is Ownable {
     }
 
     // Safe DOVE transfer function, just in case if rounding error causes pool to not have enough DOVEs.
-    function safeDveTransfer(address _to, uint256 _amount) internal {
-        uint256 dveBal = dve.balanceOf(address(this));
-        if (_amount > dveBal) {
-            dve.transfer(_to, dveBal);
+    function safeDoveTransfer(address _to, uint256 _amount) internal {
+        uint256 doveBal = dove.balanceOf(address(this));
+        if (_amount > doveBal) {
+            dove.transfer(_to, doveBal);
         } else {
-            dve.transfer(_to, _amount);
+            dove.transfer(_to, _amount);
         }
     }
 
@@ -238,8 +238,8 @@ contract MasterChef is Ownable {
     }
 
     //Pancake has to add hidden dummy pools inorder to alter the emission, here we make it simple and transparent to all.
-    function updateEmissionRate(uint256 _dvePerBlock) public onlyOwner {
+    function updateEmissionRate(uint256 _dovePerBlock) public onlyOwner {
         massUpdatePools();
-        dvePerBlock = _dvePerBlock;
+        dovePerBlock = _dovePerBlock;
     }
 }
